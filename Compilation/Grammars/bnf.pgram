@@ -1,0 +1,103 @@
+# --------------------------------------------------------------------------------------------------
+# -------------------------------- GRAMMAR :: Outfoxed Meta-Grammar --------------------------------
+# --------------------------------------------------------------------------------------------------
+root[root] := definitions=( definition * ) { Root(definitions) }
+
+definition[definition]   :=
+    | a=signature ':=' b=productions       { Definition(a, b) }
+    | EOL { CONTINUE }
+    | EOF { BREAK }
+
+signature[signature]     :=
+    | a=identifier b=annotation            { Signature(a, b) }
+
+productions[*production] :=
+    | (( EOL PIPE ) a=production {a}) +
+    | a=production                         { Sequence(a) }
+
+production[production]   :=
+    | a=expression b=[output]              { Production(a, b) }
+
+
+# --------------------------------------------------------------------------------------------------
+# ------------------------------------------ EXPRESSIONS -------------------------------------------
+# --------------------------------------------------------------------------------------------------
+expression[expression]    :=
+    | alternation
+
+alternation[expression]   :=
+    | a=concatenation b=( ('|' c=concatenation {c}) + ) { Alternation(a, *b) }
+    |   concatenation
+
+concatenation[expression] :=
+    | a=repetition b=( repetition + )      { Concatenation(a, *b) }
+    |   repetition
+
+repetition[expression]    :=
+    | a=assignment '*' { Star(a) }
+    | a=assignment '+' { Plus(a) }
+    |   assignment
+
+assignment[expression]    :=
+    | a=identifier  '=' b=parenthetical    { Assignment(a, b) }
+    | parenthetical
+
+parenthetical[expression] :=
+    | '(' a=expression b=[output] ')'      { Parenthetical(a, b) }
+    | '[' a=expression b=[output] ']'      { Optional(a, b) }
+    |     atom
+
+atom[expression] :=
+    | identifier
+    | number
+    | string
+
+
+# --------------------------------------------------------------------------------------------------
+# ------------------------------------------ ANNOTATIONS -------------------------------------------
+# --------------------------------------------------------------------------------------------------
+annotation[annotation]      :=
+    | '[' a=mult_annotation ']'            { Annotation(a) }
+
+mult_annotation[expression] :=
+    | a=pipe_annotation b=( (',' c=pipe_annotation {c}) + ) { Sequence(a, *b) }
+    |   pipe_annotation
+
+pipe_annotation[expression] :=
+    | a=star_annotation b=( ('|' c=star_annotation {c}) + ) { Alternation(a, *b) }
+    |   star_annotation
+
+star_annotation[expression] :=
+    | '*' a=atom_annotation     { Star(a) }
+    |       atom_annotation
+
+atom_annotation[expression] :=
+    | '(' a=mult_annotation ')' { Parenthetical(a) }
+    |     identifier
+
+
+# --------------------------------------------------------------------------------------------------
+# --------------------------------------------- OUTPUT ---------------------------------------------
+# --------------------------------------------------------------------------------------------------
+output[output]    :=
+    | '{' a=mult_output '}'                 { Output(a) }
+
+mult_output[expression] :=
+    | a=atom_output b=( (',' c=atom_output {c}) + )       { Sequence(a, *b) }
+    |   atom_output
+
+atom_output[expression] :=
+    | a=identifier '(' b=mult_parameter ')' { Call(a, b) }
+    | a=identifier
+
+mult_parameter[expression] :=
+    | ( (a=identifier ',' {a}) + ) b=identifier           { Sequence(*a, b) }
+    |     identifier
+
+star_parameter[expression] :=
+    | '*' a=atom_parameter                  { Star(a) }
+    |       atom_parameter
+
+atom_parameter[expression] :=
+    | a=identifier '(' b=mult_parameter ')' { Call(a, b) }
+    | a=identifier

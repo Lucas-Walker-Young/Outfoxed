@@ -1,0 +1,36 @@
+multi_assignment ::=
+    |   lhs=( (t=target_list '=' {t}) + ) rhs=(yielded_expression | starred_expression)
+        { Assignment(lhs, rhs) }
+
+target_list ::=
+    |   targets=( target ** ',' ) [','] { TargetList(targets) }
+
+target ::=
+    |   '(' t=target_list ')' { t }
+    |   '[' t=target_list ']' { t }
+    |       t=identifier      { Target(t) }
+    |       t=attribute_of    { Target(t) }
+    |       t=subscript_of    { Target(t) }
+    |   '*' t=target          { StarTarget(t) }
+
+primary ::=
+    |       attribute_of
+    |       subscript_of
+    |       call_to             to do, once signatures are figured out
+    |       identifier
+
+attribute_of ::=
+    |   root=primary '.' attribute=identifier        { Attribute(root, attribute) }
+subscript_of ::=
+    |   root=primary '[' subscript=subscription ']'  { Subscript(root, subscript) }
+subscription ::=
+    |   s=slice      !',' { s }
+    |   e=expression !',' { e }
+    |   t=((slice | expression) ** ',') [','] { Tuple(t) }
+slice ::=
+    |   a=[expression] ':' b=[expression] c=[ ':' d=[expression] {d} ] { Slice(a, b, c) }
+
+atom ::=
+    | i=IDENTIFIER  { Identifier(i) }
+    |   literal         # to do
+    |   enclosure       # to do
